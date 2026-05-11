@@ -57,7 +57,7 @@ describe('buildSystemPrompt generation options', () => {
     });
 
     expect(prompt).toContain('Selected design theme: controlled-accessories');
-    expect(prompt).toContain('Use only 2-4 relevant accessories or props');
-    expect(prompt).toContain('do not use every possible accessory');
+    expect(prompt).toContain('Use exactly 2-4 accessories per variation');
+    expect(prompt).toContain('Never mix different themes within one prompt');
   });
 });
