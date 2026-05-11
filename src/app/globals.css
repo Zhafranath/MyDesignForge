@@ -1,0 +1,140 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════════
+   Design Tokens — Kawaii/Playful Theme
+   ═══════════════════════════════════════════════════ */
+:root {
+  --font-fredoka: ui-rounded, "Trebuchet MS", "Arial Rounded MT Bold", system-ui, sans-serif;
+  --font-nunito: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Colors */
+  --color-primary:    #C9B8FF;
+  --color-primary-dark: #8B6FFF;
+  --color-secondary:  #FFB8D9;
+  --color-accent:     #B8FFE4;
+  --color-yellow:     #FFF3B8;
+  --color-peach:      #FFD9B8;
+  --color-sky:        #B8E8FF;
+
+  --color-bg:         #FAF8FF;
+  --color-surface:    #FFFFFF;
+  --color-border:     #E8E0FF;
+  --color-text:       #2D2640;
+  --color-muted:      #7B6B9E;
+
+  /* Radius */
+  --radius-sm: 12px;
+  --radius-md: 20px;
+  --radius-lg: 28px;
+  --radius-xl: 40px;
+
+  /* Shadows */
+  --shadow-kawaii:       0 4px 20px rgba(201, 184, 255, 0.25);
+  --shadow-kawaii-hover: 0 8px 32px rgba(201, 184, 255, 0.45);
+  --shadow-pink:         0 4px 20px rgba(255, 184, 217, 0.3);
+
+  /* Transitions */
+  --transition-base: 200ms ease;
+  --transition-bounce: 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ═══════════════════════════════════════════════════
+   Base Reset & Typography
+   ═══════════════════════════════════════════════════ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-nunito), system-ui, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.6;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(circle at 10% 20%, rgba(201, 184, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 90% 80%, rgba(255, 184, 217, 0.08) 0%, transparent 50%);
+}
+
+/* ═══════════════════════════════════════════════════
+   Shimmer Skeleton Animation
+   ═══════════════════════════════════════════════════ */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #E8E0FF 25%,
+    #F3EFFF 50%,
+    #E8E0FF 75%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* ═══════════════════════════════════════════════════
+   Kawaii Scrollbar
+   ═══════════════════════════════════════════════════ */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--color-bg); }
+::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--color-primary-dark); }
+
+/* ═══════════════════════════════════════════════════
+   Focus Ring — Accessible + Kawaii
+   ═══════════════════════════════════════════════════ */
+:focus-visible {
+  outline: 3px solid var(--color-primary-dark);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ═══════════════════════════════════════════════════
+   Utility: Kawaii Card Base
+   ═══════════════════════════════════════════════════ */
+@layer components {
+  .kawaii-card {
+    @apply bg-white rounded-kawaii border border-kawaii-border shadow-kawaii;
+    transition: box-shadow var(--transition-base), transform var(--transition-base);
+  }
+  .kawaii-card:hover {
+    box-shadow: var(--shadow-kawaii-hover);
+    transform: translateY(-2px);
+  }
+
+  .kawaii-btn-primary {
+    @apply bg-primary-300 text-primary-600 font-display font-semibold;
+    @apply rounded-kawaii px-6 py-3 transition-all;
+    @apply hover:bg-primary-400 hover:shadow-kawaii active:scale-95;
+    @apply focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2;
+  }
+
+  .kawaii-btn-secondary {
+    @apply bg-secondary-100 text-secondary-500 font-display font-semibold;
+    @apply rounded-kawaii px-6 py-3 transition-all;
+    @apply hover:bg-secondary-200 hover:shadow-kawaii-pink active:scale-95;
+  }
+
+  .kawaii-input {
+    @apply w-full bg-white border-2 border-kawaii-border rounded-kawaii;
+    @apply px-4 py-3 font-body text-kawaii-text placeholder:text-kawaii-muted;
+    @apply focus:border-primary-300 focus:ring-2 focus:ring-primary-100 focus:outline-none;
+    @apply transition-all;
+  }
+}
