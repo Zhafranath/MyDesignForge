@@ -143,11 +143,11 @@ export const DESIGN_THEME_OPTIONS: Record<DesignTheme, { label: string; descript
   },
   'simple-cute': {
     label: 'Simple cute',
-    description: 'Lucu, ringan, mudah dibaca, dengan detail sederhana.',
+    description: 'Lucu, bersih, ekspresi dari wajah & pose. Maks 1 prop kecil saja.',
   },
   'controlled-accessories': {
     label: 'Full acc terkontrol',
-    description: 'Gunakan beberapa aksesori relevan saja, sekitar 2-4 item, tetap rapi.',
+    description: 'Tiap variasi = 1 kostum bertema (chef, pilot, dst.) dengan 2-4 aksesori senada.',
   },
   'kawaii-pastel': {
     label: 'Kawaii pastel',
