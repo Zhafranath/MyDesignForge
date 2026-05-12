@@ -232,7 +232,7 @@ function buildThemeGuide(theme: DesignTheme): string {
 - Every prompt must include: "premium mascot illustration, professional quality, subtle shading, brand-safe, 1-3 defining props only".`;
   }
 
-  const themeOption = DESIGN_THEME_OPTIONS[theme];
+  const themeOption = DESIGN_THEME_OPTIONS[theme as DesignTheme];
   return `Selected design theme: ${theme}
 - Use the ${themeOption.label} direction consistently across the concept and all 9 design prompts.
 - Keep accessory count minimal: 0-2 props only, relevant to the expression.
