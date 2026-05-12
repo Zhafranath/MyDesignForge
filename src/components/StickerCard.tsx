@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from 'react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Copy, Check, RefreshCw, Pencil, ImagePlus, Download } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -130,15 +131,18 @@ export function StickerCard({
 
       {showImageControls && (
         <div className="rounded-kawaii-sm border border-kawaii-border bg-white/70 p-2.5 space-y-2">
-          <div className="aspect-square rounded-kawaii-sm bg-kawaii-bg border border-kawaii-border overflow-hidden flex items-center justify-center">
+          <div className="relative aspect-square rounded-kawaii-sm bg-kawaii-bg border border-kawaii-border overflow-hidden flex items-center justify-center">
             {imageStatus === 'generating' && (
               <RefreshCw className="w-5 h-5 text-primary-500 animate-spin" aria-hidden="true" />
             )}
             {imageStatus === 'done' && imageUrl && (
-              <img
+              <Image
                 src={imageUrl}
                 alt={`Generated sticker image for ${displayTitle}`}
-                className="w-full h-full object-contain"
+                fill
+                sizes="(max-width: 640px) 100vw, 33vw"
+                className="object-contain"
+                unoptimized
               />
             )}
             {(imageStatus === 'idle' || imageStatus === 'error') && (
