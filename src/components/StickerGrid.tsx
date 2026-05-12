@@ -117,6 +117,7 @@ export function StickerGrid({
                 onRegenerate={onRegenerate}
                 isRegenerating={isGenerating}
                 index={idx}
+                targetProduct={targetProduct}
               />
             </div>
           ))}
