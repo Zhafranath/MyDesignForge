@@ -90,6 +90,8 @@ $env:HF_TOKEN="hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 npm run dev:ai
 ```
 
+If you prefer, put `HF_TOKEN` in `.env.local` instead. The launcher reads that file automatically.
+
 Docker fallback uses GPU by default:
 
 ```bash
@@ -229,6 +231,14 @@ docs/superpowers      Design specs and implementation plans
 - FLUX.1 and rembg are not bundled in this repository.
 - Local sticker image generation requires a separate image service running on your machine.
 - If `STICKER_IMAGE_API_URL` is not configured, prompt generation still works and sticker cards show a clear image-service error when image generation is requested.
+
+## Troubleshooting
+
+- `npm run dev:ai` only starts the local image service if it can find a supported Python runtime or Docker Desktop.
+- If sticker image requests time out on the first run, keep the process running. The initial FLUX.1 download can take several minutes.
+- If Hugging Face returns access or cache errors, confirm that your token is saved in `.env.local` and that your account has accepted access to `black-forest-labs/FLUX.1-schnell`.
+- If the Docker fallback cannot reach Hugging Face, check VPN, proxy, firewall, and Docker Desktop network access.
+- Phone Case and T-Shirt outputs are prompt-only by design. Sticker cards are the only ones that show image preview and download controls.
 
 ## License
 
