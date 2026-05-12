@@ -1,0 +1,11 @@
+accelerate>=0.33,<2
+diffusers>=0.32,<1
+fastapi>=0.115,<1
+huggingface_hub>=0.24,<1
+pillow>=10,<12
+protobuf>=4,<6
+rembg[cpu]>=2.0.60,<3
+safetensors>=0.4,<1
+sentencepiece>=0.2,<1
+transformers>=4.44,<5
+uvicorn[standard]>=0.30,<1

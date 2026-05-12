@@ -2,6 +2,9 @@
 /node_modules
 /.pnp
 .pnp.js
+.image-service-venv/
+.cache/
+image-service-output/
 
 # Testing
 /coverage

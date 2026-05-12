@@ -53,6 +53,75 @@ Open:
 http://localhost:3000
 ```
 
+## One-Command Local AI Mode
+
+To run the Next.js app and the local FLUX.1 + rembg image service together:
+
+```bash
+npm run dev:ai
+```
+
+On first run, this command will:
+
+- create `.image-service-venv`;
+- install PyTorch and the Python image-service dependencies;
+- start the local image service at `http://127.0.0.1:8000`;
+- start the Next.js app at `http://localhost:3000`;
+- inject `STICKER_IMAGE_API_URL=http://127.0.0.1:8000/generate-sticker` into the Next.js process.
+
+If Python 3.10-3.12 is not available, the launcher falls back to Docker and builds `image_service/Dockerfile`.
+
+The first sticker image request may still take several minutes because FLUX.1 weights need to download and load. Accept the model terms on Hugging Face before the first run:
+
+```text
+https://huggingface.co/black-forest-labs/FLUX.1-schnell
+```
+
+Then authenticate with either:
+
+```bash
+huggingface-cli login
+```
+
+or set a token before starting:
+
+```bash
+$env:HF_TOKEN="hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+npm run dev:ai
+```
+
+Docker fallback uses GPU by default:
+
+```bash
+$env:DOCKER_GPUS="all"
+npm run dev:ai
+```
+
+If Docker GPU support is not available:
+
+```bash
+$env:DOCKER_GPUS="0"
+npm run dev:ai
+```
+
+By default the launcher installs CUDA 12.1 PyTorch. For CPU-only mode:
+
+```bash
+$env:PYTORCH_INDEX_URL="https://download.pytorch.org/whl/cpu"
+$env:FLUX_DEVICE="cpu"
+npm run dev:ai
+```
+
+Useful overrides:
+
+```bash
+$env:NEXT_PORT="3001"
+$env:IMAGE_SERVICE_PORT="8001"
+$env:FLUX_WIDTH="512"
+$env:FLUX_HEIGHT="512"
+npm run dev:ai
+```
+
 ## Environment Variables
 
 Create `.env.local` from `.env.example` and configure:
@@ -63,11 +132,11 @@ GROQ_MODEL=llama-3.3-70b-versatile
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
 ```
 
-For local sticker image generation:
+For local sticker image generation when you manage the image service yourself:
 
 ```env
 STICKER_IMAGE_API_URL=http://localhost:8000/generate-sticker
-STICKER_IMAGE_API_TIMEOUT_MS=120000
+STICKER_IMAGE_API_TIMEOUT_MS=600000
 ```
 
 `STICKER_IMAGE_API_URL` should point to a local service that runs FLUX.1 for image generation and rembg for background removal.
@@ -105,6 +174,7 @@ Image generation controls are rendered only for the Sticker product. Phone Case 
 
 ```bash
 npm run dev
+npm run dev:ai
 npm run build
 npm run start
 npm run type-check
