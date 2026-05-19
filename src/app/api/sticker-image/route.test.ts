@@ -89,7 +89,7 @@ describe('POST /api/sticker-image', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ message: 'GPU busy' }), {
+        new Response(JSON.stringify({ detail: 'GPU busy' }), {
           status: 503,
           headers: { 'content-type': 'application/json' },
         })
@@ -107,6 +107,35 @@ describe('POST /api/sticker-image', () => {
     });
   });
 
+  it('surfaces detail messages from upstream HTTP errors', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            detail:
+              '403 Client Error. Cannot access gated repo for url https://huggingface.co/...',
+          }),
+          {
+            status: 500,
+            headers: { 'content-type': 'application/json' },
+          }
+        )
+      )
+    );
+
+    const response = await postStickerImage({
+      prompt: 'cute blue cat sticker',
+      expression: 'happy',
+    });
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toMatchObject({
+      message:
+        'Local image service gagal: 403 Client Error. Cannot access gated repo for url https://huggingface.co/...',
+    });
+  });
+
   it('returns 504 when the local service cannot be reached', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('fetch failed')));
 
@@ -117,7 +146,7 @@ describe('POST /api/sticker-image', () => {
 
     expect(response.status).toBe(504);
     await expect(response.json()).resolves.toMatchObject({
-      message: 'Local image service tidak merespons. Pastikan FLUX.1 + rembg sedang berjalan.',
+      message: 'Local image service tidak merespons. Pastikan SDXL Turbo + rembg sedang berjalan.',
     });
   });
 });

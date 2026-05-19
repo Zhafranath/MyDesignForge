@@ -1,23 +1,23 @@
 # MyDesignForge
 
-MyDesignForge is a product-focused AI prompt generator for print-on-demand sellers. It creates original, seller-safe design concepts and nine production-ready image prompts for stickers, phone cases, and t-shirt graphics.
+MyDesignForge is a product-focused AI prompt generator for print-on-demand sellers. It creates one original, seller-safe design concept and nine production-ready prompt variations for stickers, phone cases, and t-shirt graphics.
 
-The app is optimized for Redbubble-style workflows and supports prompt formats for Midjourney, DALL-E, Stable Diffusion, Kling, and Runway. Sticker prompts can also be sent to a local FLUX.1 + rembg image service to generate transparent PNG previews and downloadable artwork directly from the result cards.
+The app is optimized for Redbubble-style workflows. Prompt generation is handled by a Next.js API route backed by Groq. Sticker prompts can optionally be sent to a local SDXL Turbo + rembg image service so the app can generate transparent PNG previews and downloadable artwork from each sticker card.
 
 ## Features
 
 - Generate one original design concept and nine expression-based prompt variations.
-- Target product modes for Sticker, Phone Case, and T-Shirt designs.
-- Product-aware prompt rules for aspect ratio, composition, transparent backgrounds, safe margins, and print readability.
-- Seller-safety guidance that avoids brands, logos, public figures, copyrighted characters, fan art, mockups, watermarks, and QR codes.
-- Character form controls, including animals, humans, doodles, anime, living objects, robots, living food, living plants, cute monsters, and original mascots.
-- Text controls for no text, automatic short text, or custom user-provided text.
-- Design theme controls for minimalist, simple cute, controlled accessories, kawaii pastel, bold vector, retro 90s, streetwear, goth cute, decorative pattern, and premium mascot styles.
-- Streaming prompt generation through a Next.js API route backed by Groq.
-- Sticker-only local image generation through a configurable FLUX.1 + rembg HTTP service.
-- Per-card prompt copy, edit, regenerate, image preview, and image download actions.
+- Product modes for Sticker, Phone Case, and T-Shirt designs.
+- Prompt rules for aspect ratio, transparent backgrounds, safe margins, print readability, and product-specific composition.
+- Seller-safety guidance that avoids brands, logos, celebrities, copyrighted characters, fan art, mockups, watermarks, and QR codes.
+- Character form controls: animal, human, cartoon, doodle, anime, living object, stickman, fantasy creature, robot, living food, living plant, cute monster, and original mascot.
+- Text controls: no text, automatic expression text, or exact custom text.
+- Theme controls: minimalist, simple cute, controlled accessories, kawaii pastel, bold vector, retro 90s, streetwear, goth cute, decorative pattern, and premium mascot.
+- Streaming prompt generation through `/api/generate`.
+- Sticker-only local image generation through `/api/sticker-image` and the Python SDXL service.
+- Per-card copy, edit, regenerate, image preview, and PNG download controls.
 - Export generated prompt packs as `.txt` files.
-- Local history storage for previous packs.
+- Local browser history for previous packs.
 
 ## Architecture
 
@@ -27,23 +27,36 @@ Browser UI
      -> /api/generate
         -> Groq chat completion stream
      -> /api/sticker-image
-        -> local FLUX.1 + rembg image service
+        -> local SDXL Turbo + rembg image service
 ```
 
-The Next.js app handles the UI, prompt generation workflow, validation, and proxy routes. FLUX.1 and rembg are intentionally kept outside the Next.js process so GPU/Python dependencies can run as a separate local service.
+The Next.js app owns the UI, prompt workflow, validation, and proxy routes. SDXL Turbo and rembg run outside the Next.js process because the image stack needs Python, PyTorch, and optional GPU dependencies.
 
 ## Requirements
 
+Required for prompt generation:
+
 - Node.js 20 or newer
 - npm
-- Groq API key
-- Optional: local FLUX.1 + rembg service for sticker image generation
+- Groq API key from `https://console.groq.com`
 
-## Quick Start
+Required for local sticker image generation:
+
+- Python 3.10, 3.11, or 3.12, recommended: Python 3.11
+- OR Docker Desktop as fallback
+- Enough disk space for SDXL Turbo and PyTorch dependencies
+- Optional GPU:
+  - NVIDIA CUDA: default PyTorch install target is CUDA 12.1
+  - Intel Arc: use the XPU PyTorch wheel
+  - CPU mode works but is much slower
+
+## Quick Start: Prompt Generator Only
+
+Use this mode if you only want prompt generation without local SDXL images.
 
 ```bash
 npm install
-cp .env.example .env.local
+copy .env.example .env.local
 npm run dev
 ```
 
@@ -53,108 +66,306 @@ Open:
 http://localhost:3000
 ```
 
-## One-Command Local AI Mode
+Set at least this value in `.env.local`:
 
-To run the Next.js app and the local FLUX.1 + rembg image service together:
+```env
+GROQ_API_KEY=gsk_your_real_key_here
+GROQ_MODEL=llama-3.1-8b-instant
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+```
+
+## Quick Start: App + Local SDXL
+
+Use this mode if you want the sticker cards to generate downloadable transparent PNG images.
 
 ```bash
+npm install
+copy .env.example .env.local
 npm run dev:ai
 ```
 
-On first run, this command will:
+`npm run dev:ai` does the following:
 
-- create `.image-service-venv`;
-- install PyTorch and the Python image-service dependencies;
-- start the local image service at `http://127.0.0.1:8000`;
-- start the Next.js app at `http://localhost:3000`;
-- inject `STICKER_IMAGE_API_URL=http://127.0.0.1:8000/generate-sticker` into the Next.js process.
+- creates `.image-service-venv`;
+- installs PyTorch and `image_service/requirements.txt`;
+- starts the Python image service at `http://127.0.0.1:8000`;
+- starts the Next.js app at `http://localhost:3000`;
+- injects `STICKER_IMAGE_API_URL=http://127.0.0.1:8000/generate-sticker` into the Next.js process.
 
-If Python 3.10-3.12 is not available, the launcher falls back to Docker and builds `image_service/Dockerfile`.
+If Python setup fails and Docker Desktop is available, the launcher builds `image_service/Dockerfile` and runs the image service in Docker.
 
-The first sticker image request may still take several minutes because FLUX.1 weights need to download and load. Accept the model terms on Hugging Face before the first run:
+## Recommended `.env.local`
 
-```text
-https://huggingface.co/black-forest-labs/FLUX.1-schnell
+```env
+# Required for prompt generation
+GROQ_API_KEY=gsk_your_real_key_here
+GROQ_MODEL=llama-3.1-8b-instant
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+
+# Used by the local image proxy
+STICKER_IMAGE_API_URL=http://localhost:8000/generate-sticker
+STICKER_IMAGE_API_TIMEOUT_MS=600000
+
+# Ports
+NEXT_PORT=3000
+IMAGE_SERVICE_PORT=8000
+
+# SDXL Turbo defaults
+SDXL_MODEL_ID=stabilityai/sdxl-turbo
+SDXL_WIDTH=512
+SDXL_HEIGHT=512
+SDXL_STEPS=1
+SDXL_DEVICE=auto
+SDXL_DTYPE=auto
+
+# Optional: point to a downloaded local Diffusers model
+# SDXL_MODEL_PATH=C:\models\sdxl-turbo
+
+# Optional: Hugging Face token if loading from Hub
+# HF_TOKEN=hf_your_token_here
 ```
 
-Then authenticate with either:
+Do not commit real API keys or Hugging Face tokens.
 
-```bash
+## Install SDXL Turbo Locally
+
+The image service can load SDXL Turbo in two ways:
+
+1. **Local model folder** through `SDXL_MODEL_PATH`.
+2. **Hugging Face Hub** through `SDXL_MODEL_ID` and optional `HF_TOKEN`.
+
+Local model folder is recommended because it avoids repeated downloads and token problems.
+
+### Option A: Download With Hugging Face CLI
+
+Windows PowerShell:
+
+```powershell
+mkdir C:\models
+python -m pip install -U "huggingface_hub[cli]"
+huggingface-cli download stabilityai/sdxl-turbo --local-dir C:\models\sdxl-turbo --local-dir-use-symlinks False
+```
+
+Then set:
+
+```env
+SDXL_MODEL_PATH=C:\models\sdxl-turbo
+SDXL_MODEL_ID=stabilityai/sdxl-turbo
+```
+
+The folder must contain a complete Diffusers pipeline, including `model_index.json`, model configs, tokenizer files, scheduler config, and `.safetensors` weights.
+
+### Option B: Download With Git LFS
+
+Install Git LFS first, then run:
+
+```powershell
+git lfs install
+git clone https://huggingface.co/stabilityai/sdxl-turbo C:\models\sdxl-turbo
+```
+
+Then set:
+
+```env
+SDXL_MODEL_PATH=C:\models\sdxl-turbo
+```
+
+### Option C: Load From Hugging Face Hub
+
+If `SDXL_MODEL_PATH` is not set, the service loads:
+
+```env
+SDXL_MODEL_ID=stabilityai/sdxl-turbo
+```
+
+If the model is not cached locally, authenticate first:
+
+```powershell
+python -m pip install -U "huggingface_hub[cli]"
 huggingface-cli login
 ```
 
-or set a token before starting:
+Or set a token:
 
-```bash
-$env:HF_TOKEN="hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```env
+HF_TOKEN=hf_your_token_here
+```
+
+Then start:
+
+```powershell
 npm run dev:ai
 ```
 
-If you prefer, put `HF_TOKEN` in `.env.local` instead. The launcher reads that file automatically.
+The first image request can take several minutes because model weights may need to download and load into memory.
 
-Docker fallback uses GPU by default:
+## GPU and CPU Modes
 
-```bash
+### NVIDIA CUDA
+
+This is the default local Python install path used by `npm run dev:ai`:
+
+```env
+PYTORCH_INDEX_URL=https://download.pytorch.org/whl/cu121
+SDXL_DEVICE=auto
+SDXL_DTYPE=auto
+```
+
+If CUDA is available, the service selects `cuda`. Otherwise it falls back to CPU unless XPU is available.
+
+### Intel Arc / XPU
+
+Use Intel PyTorch wheels and force XPU:
+
+```powershell
+$env:PYTORCH_INDEX_URL="https://download.pytorch.org/whl/xpu"
+$env:SDXL_DEVICE="xpu"
+$env:SDXL_DTYPE="fp16"
+npm run dev:ai
+```
+
+Or put this in `.env.local`:
+
+```env
+PYTORCH_INDEX_URL=https://download.pytorch.org/whl/xpu
+SDXL_DEVICE=xpu
+SDXL_DTYPE=fp16
+```
+
+The service uses `torch.xpu`, not CUDA, for Intel GPU mode. Check:
+
+```text
+http://127.0.0.1:8000/health
+```
+
+If it returns `"device": "xpu"`, XPU mode is active.
+
+For XPU, dimensions are capped at `512x512` in the service to reduce local VRAM pressure.
+
+### CPU Only
+
+CPU works but is slow:
+
+```powershell
+$env:PYTORCH_INDEX_URL="https://download.pytorch.org/whl/cpu"
+$env:SDXL_DEVICE="cpu"
+npm run dev:ai
+```
+
+Or:
+
+```env
+PYTORCH_INDEX_URL=https://download.pytorch.org/whl/cpu
+SDXL_DEVICE=cpu
+```
+
+### Docker Fallback
+
+If Python setup fails, `npm run dev:ai` can fall back to Docker Desktop.
+
+Docker GPU mode:
+
+```powershell
 $env:DOCKER_GPUS="all"
 npm run dev:ai
 ```
 
-If Docker GPU support is not available:
+Docker CPU fallback:
 
-```bash
+```powershell
 $env:DOCKER_GPUS="0"
 npm run dev:ai
 ```
 
-By default the launcher installs CUDA 12.1 PyTorch. For CPU-only mode:
+If `SDXL_MODEL_PATH` points to a local folder, the Docker launcher mounts that folder read-only into the container.
+
+## Manual Image Service Start
+
+Normally you should use:
 
 ```bash
-$env:PYTORCH_INDEX_URL="https://download.pytorch.org/whl/cpu"
-$env:FLUX_DEVICE="cpu"
 npm run dev:ai
 ```
 
-Useful overrides:
+Manual mode is useful when debugging the Python service directly.
 
-```bash
-$env:NEXT_PORT="3001"
-$env:IMAGE_SERVICE_PORT="8001"
-$env:FLUX_WIDTH="512"
-$env:FLUX_HEIGHT="512"
-npm run dev:ai
+```powershell
+python -m venv .image-service-venv
+.\.image-service-venv\Scripts\python.exe -m pip install --upgrade pip
+.\.image-service-venv\Scripts\python.exe -m pip install --upgrade --force-reinstall torch torchvision --index-url https://download.pytorch.org/whl/cu121
+.\.image-service-venv\Scripts\python.exe -m pip install -r image_service\requirements.txt
+.\.image-service-venv\Scripts\python.exe -m uvicorn image_service.server:app --host 127.0.0.1 --port 8000
 ```
 
-## Environment Variables
+In another terminal:
 
-Create `.env.local` from `.env.example` and configure:
-
-```env
-GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-GROQ_MODEL=llama-3.3-70b-versatile
-NEXT_PUBLIC_BASE_URL=http://localhost:3000
+```powershell
+$env:STICKER_IMAGE_API_URL="http://127.0.0.1:8000/generate-sticker"
+npm run dev
 ```
 
-For local sticker image generation when you manage the image service yourself:
+Health check:
 
-```env
-STICKER_IMAGE_API_URL=http://localhost:8000/generate-sticker
-STICKER_IMAGE_API_TIMEOUT_MS=600000
+```text
+http://127.0.0.1:8000/health
 ```
 
-`STICKER_IMAGE_API_URL` should point to a local service that runs FLUX.1 for image generation and rembg for background removal.
+## How To Generate Sticker Images
 
-## Local FLUX.1 + rembg Contract
+1. Start the app with `npm run dev:ai`.
+2. Open `http://localhost:3000`.
+3. Enter a design idea.
+4. Choose product: `Sticker`.
+5. Choose text mode:
+   - `Tanpa tulisan`: no readable text.
+   - `Tulisan otomatis`: the app asks the AI to create short expression text.
+   - `Tulisan custom`: the app asks the AI to use your exact text.
+6. Click Generate.
+7. On a sticker card, click `Generate Image`.
+8. Download the PNG from the download button.
 
-The app calls the local image service through `/api/sticker-image`. The proxy sends this JSON body to `STICKER_IMAGE_API_URL`:
+Image generation controls are only shown for Sticker mode. Phone Case and T-Shirt remain prompt-only.
+
+## Text Quality Notes
+
+SDXL Turbo can generate simple lettering, but it is not as reliable as dedicated text-rendering or image-editing tools. For better results:
+
+- Use short text, ideally 1-2 words.
+- Prefer uppercase: `WOW`, `NOPE`, `HELLO`.
+- Avoid long sentences.
+- Avoid tiny text.
+- Use custom text with a clean sign, badge, or speech bubble.
+- Regenerate if the text is misspelled; diffusion models can still distort letters.
+
+The app now makes custom sticker text prominent in prompts and prioritizes it in the local SDXL prompt as `large readable exact text "...", do not omit text`.
+
+## Full-Body Sticker Framing Notes
+
+The local SDXL prompt also prioritizes:
+
+- full body complete character visible;
+- head-to-toe composition;
+- centered with safe margins;
+- wide framing;
+- no close-up;
+- no cropped head;
+- no cut off body;
+- no out of frame.
+
+This reduces head-only or cropped sticker outputs, although diffusion output can still vary by seed and prompt complexity.
+
+## Local Image Service Contract
+
+The Next.js route `/api/sticker-image` sends this JSON body to `STICKER_IMAGE_API_URL`:
 
 ```json
 {
-  "prompt": "cute blue cat happy sticker, transparent background, die-cut outline",
+  "prompt": "Sticker design prompt:\nCharacter form: cute animal mascot.\nMain character: blue cat.\nText in design: text reading \"WOW!\".\nTheme: simple cute kawaii.\nExpression: happy.\nPose/action: jumping.\nVisual style: clean vector sticker.\nComposition: full body complete character visible.\nSticker details: transparent background, thick white border.\nAvoid: watermark, logo.",
   "expression": "happy"
 }
 ```
 
-The local service should return:
+The local service returns:
 
 ```json
 {
@@ -162,7 +373,7 @@ The local service should return:
 }
 ```
 
-or a browser-reachable local URL:
+or a browser-reachable URL:
 
 ```json
 {
@@ -170,22 +381,21 @@ or a browser-reachable local URL:
 }
 ```
 
-Image generation controls are rendered only for the Sticker product. Phone Case and T-Shirt modes remain prompt-only.
-
 ## Available Scripts
 
 ```bash
-npm run dev
-npm run dev:ai
-npm run build
-npm run start
-npm run type-check
-npm run test
+npm run dev          # Next.js only
+npm run dev:ai       # Next.js + local SDXL image service
+npm run build        # Production build
+npm run start        # Start built Next.js app
+npm run type-check   # TypeScript check
+npm run test         # Vitest suite
+npm run test:watch   # Vitest watch mode
 ```
 
 ## Validation
 
-Run the full verification suite before shipping changes:
+Run these before shipping changes:
 
 ```bash
 npm run test
@@ -193,7 +403,13 @@ npm run type-check
 npm run build
 ```
 
-Current coverage includes prompt builder behavior, local storage, random idea generation, prompt generation API, sticker image proxy API, and core UI selector/card interactions.
+Python image service tests:
+
+```bash
+python -m unittest image_service.test_server
+```
+
+Current coverage includes prompt builder behavior, random idea generation, local storage, prompt generation API, sticker image proxy API, script helpers, image service prompt handling, and core UI components.
 
 ## Project Structure
 
@@ -207,6 +423,9 @@ src/components        UI components and tests
 src/hooks             Client-side generation, copy, and history hooks
 src/lib               Prompt builders, constants, storage, and idea helpers
 src/types             Shared domain types
+
+image_service         FastAPI SDXL Turbo + rembg service
+scripts               Local AI launcher
 docs/superpowers      Design specs and implementation plans
 ```
 
@@ -225,20 +444,57 @@ docs/superpowers      Design specs and implementation plans
 - `/api/generate` includes simple in-memory rate limiting.
 - Generated prompt instructions prioritize original, brand-safe artwork.
 - The local image service URL is called from the server-side proxy, avoiding browser CORS requirements.
-
-## Notes
-
-- FLUX.1 and rembg are not bundled in this repository.
-- Local sticker image generation requires a separate image service running on your machine.
-- If `STICKER_IMAGE_API_URL` is not configured, prompt generation still works and sticker cards show a clear image-service error when image generation is requested.
+- Do not commit `.env.local`, real API keys, Hugging Face tokens, downloaded model weights, or `.image-service-venv`.
 
 ## Troubleshooting
 
-- `npm run dev:ai` only starts the local image service if it can find a supported Python runtime or Docker Desktop.
-- If sticker image requests time out on the first run, keep the process running. The initial FLUX.1 download can take several minutes.
-- If Hugging Face returns access or cache errors, confirm that your token is saved in `.env.local` and that your account has accepted access to `black-forest-labs/FLUX.1-schnell`.
-- If the Docker fallback cannot reach Hugging Face, check VPN, proxy, firewall, and Docker Desktop network access.
-- Phone Case and T-Shirt outputs are prompt-only by design. Sticker cards are the only ones that show image preview and download controls.
+### `npm run dev:ai` cannot find Python
+
+Install Python 3.11 and ensure `python --version` or `py -3.11 --version` works.
+
+### First image request is very slow
+
+The model may be downloading or loading into memory. Keep the terminal running and wait. Use `SDXL_MODEL_PATH` for faster repeat starts.
+
+### Hugging Face access or cache errors
+
+- Confirm `SDXL_MODEL_PATH` points to a complete model folder; or
+- set `HF_TOKEN`; or
+- run `huggingface-cli login`.
+
+### Docker cannot download the model
+
+Check VPN, firewall, proxy, Docker Desktop network access, and Hugging Face token forwarding.
+
+### GPU out of memory
+
+Try:
+
+```env
+SDXL_WIDTH=512
+SDXL_HEIGHT=512
+SDXL_STEPS=1
+SDXL_DTYPE=fp16
+```
+
+For Docker CPU fallback:
+
+```powershell
+$env:DOCKER_GPUS="0"
+npm run dev:ai
+```
+
+### Sticker image is cropped
+
+Regenerate the prompt or image. The service prioritizes full-body framing, but very cluttered prompts can still push the subject out of frame.
+
+### Custom text is missing or misspelled
+
+Use shorter uppercase text and regenerate. SDXL Turbo is not fully reliable for exact lettering, but the app now makes custom text a mandatory prompt element and prioritizes it before the compacted visual prompt.
+
+### Phone Case and T-Shirt do not show image buttons
+
+This is intentional. Local image generation currently supports Sticker mode only.
 
 ## License
 

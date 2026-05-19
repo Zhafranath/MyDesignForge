@@ -18,7 +18,8 @@ const PLATFORM_STYLES: Record<Platform, string> = {
 - Use SDXL tag-style syntax separated by commas.
 - Include quality boosters: (clean vector illustration:1.25), (crisp lineart:1.2), high resolution, sharp edges.
 - Include product-specific composition tags and clear subject isolation.
-- End with a negative prompt in brackets: [lowres, blurry, watermark, logo, text artifacts, copyrighted character, celebrity likeness, bad anatomy, extra limbs, mockup]`.trim(),
+- For stickers, explicitly include full body complete character visible, head-to-toe, centered with safe margins, wide framing.
+- End with a negative prompt in brackets: [lowres, blurry, watermark, logo, text artifacts, copyrighted character, celebrity likeness, bad anatomy, extra limbs, mockup, close-up, cropped head, cut off body, out of frame]`.trim(),
 
   kling: `
 - Kling AI style: concise natural description with strong visual staging.
@@ -38,8 +39,11 @@ const PRODUCT_GUIDES: Record<ProductType, string> = {
 TARGET: Redbubble sticker / sticker pack.
 - Square 1:1 composition, isolated single subject or compact sticker pack arrangement.
 - Transparent background, crisp outer contour, thick white kiss-cut border, no stray pixels.
+- Full body complete character visible, head-to-toe, centered with safe margins; never crop the head, feet, ears, tail, or props.
+- Use wide framing with enough transparent space around the full subject before the border.
 - Big readable shape at small size; avoid tiny details and long text.
-- Prompt should say: "transparent background, sticker-ready, die-cut outline, thick white border".
+- Prompt should say: "transparent background, sticker-ready, die-cut outline, thick white border, full body complete character visible, head-to-toe, centered with safe margins".
+- Prompt should avoid close-up framing: "no close-up, no cropped head, no cut off body, no out of frame".
 - Do not show a physical sticker sheet mockup unless the user explicitly asks.`.trim(),
 
   'phone-case': `
@@ -125,7 +129,9 @@ function buildTextGuide(options: GenerationOptions): string {
     return `Text mode: custom text
 - Use this exact text: "${customText}" in every design prompt.
 - Do not translate, paraphrase, or change the spelling.
-- Keep the text readable, short, and integrated as lettering, a tiny sign, or a speech bubble only when it fits the product composition.`;
+- The text is mandatory visual content, not optional. Do not omit the text.
+- Make it large readable hand-lettered text on a clean sign, badge, or speech bubble with high contrast.
+- Keep the exact spelling readable and avoid misspelled lettering, scrambled letters, or gibberish.`;
   }
 
   return `Text mode: no text
@@ -254,6 +260,31 @@ ${EXPRESSION_ORDER.map((expr) => {
 ${EXPRESSION_ORDER.map((expr) => `- ${expr}: ${VARIATION_GUIDE[expr]}`).join('\n')}`;
 }
 
+function buildStructuredPromptGuide(targetProduct: ProductType, options: GenerationOptions): string {
+  if (targetProduct !== 'sticker') return '';
+
+  const customText = options.textMode === 'custom' ? options.customText?.trim() ?? '' : '';
+  const textInstruction = customText
+    ? `must be exactly text reading "${customText}" as large readable hand-lettered text on a clean sign, badge, or speech bubble; do not omit the text`
+    : `write "no readable text" OR text reading "[exact phrase]"`;
+
+  return `## STRUCTURED STICKER PROMPT FORMAT - CRITICAL
+Every design object's "prompt" value MUST be a readable structured prompt with these exact labels and this order:
+Sticker design prompt:
+Character form: [clear form, e.g. cute animal mascot, living object, stickman, robot, fantasy creature].
+Main character: [specific original character identity, species/object, colors, and defining visual hook].
+Text in design: [${textInstruction}].
+Theme: [selected visual theme and style direction].
+Expression: [the exact expression and visible facial/body emotion].
+Pose/action: [clear pose, gesture, or micro-story for this variation].
+Visual style: [rendering style, outline, color, shading, detail level].
+Composition: [full body complete character visible, head-to-toe, centered with safe margins, wide framing, readable silhouette, enough transparent spacing around the whole subject].
+Sticker details: [transparent background, thick white die-cut border, sharp clean edges].
+Avoid: [watermark, logo, copyrighted character, celebrity likeness, messy background, extra limbs, blurry text, misspelled lettering, close-up, cropped head, cut off body, out of frame].
+
+The structured prompt must still be natural English and ready to paste into Gemini, GPT image tools, Claude image tools, DALL-E, Midjourney, or SDXL. Do not collapse it into one vague paragraph.`;
+}
+
 // ─────────────────────────────────────────────────────────────────
 // MAIN EXPORTS
 // ─────────────────────────────────────────────────────────────────
@@ -270,6 +301,7 @@ export function buildSystemPrompt(
   const characterFormGuide = buildCharacterFormGuide(options.characterForm);
   const textGuide = buildTextGuide(options);
   const themeGuide = buildThemeGuide(options.theme);
+  const structuredPromptGuide = buildStructuredPromptGuide(targetProduct, options);
   const variationSection = buildVariationGuideSection(options.theme);
 
   return `You are StickerForge AI — an expert prompt engineer for original, cute, sellable print-on-demand artwork inspired by Redbubble marketplace needs.
@@ -316,6 +348,8 @@ DO NOT output markdown, explanations, numbering, code fences, or extra text.
   "prompt": "THE ACTUAL IMAGE PROMPT IN ENGLISH — ready to paste into the selected AI tool",
   "tips": "Short tip in Bahasa Indonesia, max 14 words, about using or tweaking this prompt"
 }
+
+${structuredPromptGuide}
 
 ## ORIGINALITY AND SELLER-SAFETY RULES
 - Create original characters only. Do NOT reference or imitate existing brands, logos, celebrities, movies, anime, games, memes, artists, or named fictional characters.
@@ -364,6 +398,7 @@ export function buildRegeneratePrompt(
   const characterFormGuide = buildCharacterFormGuide(options.characterForm);
   const textGuide = buildTextGuide(options);
   const themeGuide = buildThemeGuide(options.theme);
+  const structuredPromptGuide = buildStructuredPromptGuide(targetProduct, options);
 
   const isControlledAccessories = options.theme === 'controlled-accessories';
   const variationAngle = isControlledAccessories
@@ -406,6 +441,8 @@ ${accessoryRule}
 
 OUTPUT: Exactly 1 line of valid minified JSON:
 {"type":"design","expression":"${expression}","title":"[short English title]","emoji":"[emoji]","prompt":"[English image prompt]","tips":"[tip in Bahasa Indonesia]"}
+
+${structuredPromptGuide}
 
 ORIGINALITY RULES:
 - No brands, logos, celebrities, copyrighted characters, fan art, watermarks, mockups, screenshots, or QR codes.

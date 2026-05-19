@@ -3,7 +3,7 @@ import type { Expression } from '@/types';
 import { EXPRESSION_ORDER } from '@/lib/constants';
 
 const VALID_EXPRESSIONS = new Set<Expression>(EXPRESSION_ORDER);
-const DEFAULT_TIMEOUT_MS = 120_000;
+const DEFAULT_TIMEOUT_MS = 600_000;
 
 interface StickerImageBody {
   prompt: string;
@@ -47,11 +47,15 @@ function getTimeoutMs(): number {
 async function readUpstreamMessage(response: Response): Promise<string> {
   try {
     const payload = await response.json();
-    const message = payload && typeof payload === 'object'
-      ? (payload as Record<string, unknown>).message
-      : null;
+    const record = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : null;
+    const message = record ? record.message : null;
     if (typeof message === 'string' && message.trim().length > 0) {
       return message;
+    }
+
+    const detail = record ? record.detail : null;
+    if (typeof detail === 'string' && detail.trim().length > 0) {
+      return detail;
     }
   } catch {
     try {
@@ -124,7 +128,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     return NextResponse.json(
       {
         message:
-          'Local image service tidak merespons. Pastikan FLUX.1 + rembg sedang berjalan.',
+          'Local image service tidak merespons. Pastikan SDXL Turbo + rembg sedang berjalan.',
       },
       { status: 504 }
     );

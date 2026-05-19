@@ -40,18 +40,34 @@ interface UseGenerateReturn {
 export function useGenerate(description: string): UseGenerateReturn {
   const [state, setState] = useState<GenerateState>(INITIAL_STATE);
   const abortRef = useRef<AbortController | null>(null);
+  const requestSeqRef = useRef(0);
+
+  const beginRequest = useCallback(() => {
+    abortRef.current?.abort();
+
+    const controller = new AbortController();
+    const requestId = requestSeqRef.current + 1;
+    requestSeqRef.current = requestId;
+    abortRef.current = controller;
+
+    setState({ status: 'generating', concept: null, stickers: [], error: null });
+    return { controller, requestId };
+  }, []);
+
+  const isCurrentRequest = useCallback((requestId: number) => {
+    return requestId === requestSeqRef.current;
+  }, []);
 
   const streamFromApi = useCallback(
     async (body: Record<string, unknown>): Promise<void> => {
-      abortRef.current = new AbortController();
-      setState({ status: 'generating', concept: null, stickers: [], error: null });
+      const { controller, requestId } = beginRequest();
 
       try {
         const response = await fetch('/api/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
-          signal: abortRef.current.signal,
+          signal: controller.signal,
         });
 
         if (!response.ok || !response.body) {
@@ -89,6 +105,7 @@ export function useGenerate(description: string): UseGenerateReturn {
             }
 
             if (event.type === 'concept') {
+              if (!isCurrentRequest(requestId)) return;
               setState((prev) => ({
                 ...prev,
                 concept: {
@@ -106,6 +123,7 @@ export function useGenerate(description: string): UseGenerateReturn {
             }
 
             if (event.type === 'design' || event.type === 'sticker') {
+              if (!isCurrentRequest(requestId)) return;
               const sticker: StickerPrompt = {
                 expression: event.expression,
                 title: event.title,
@@ -121,12 +139,21 @@ export function useGenerate(description: string): UseGenerateReturn {
           }
         }
 
-        setState((prev) => ({ ...prev, status: 'done' }));
+        if (isCurrentRequest(requestId)) {
+          setState((prev) => ({ ...prev, status: 'done' }));
+        }
       } catch (err) {
         if ((err as Error).name === 'AbortError') {
-          setState(INITIAL_STATE);
+          if (isCurrentRequest(requestId)) {
+            setState(INITIAL_STATE);
+          }
           return;
         }
+
+        if (!isCurrentRequest(requestId)) {
+          return;
+        }
+
         setState((prev) => ({
           ...prev,
           status: 'error',
@@ -134,7 +161,7 @@ export function useGenerate(description: string): UseGenerateReturn {
         }));
       }
     },
-    []
+    [beginRequest, isCurrentRequest]
   );
 
   const generate = useCallback(
@@ -157,11 +184,10 @@ export function useGenerate(description: string): UseGenerateReturn {
       targetProduct: ProductType,
       generationOptions: GenerationOptions
     ) => {
-      abortRef.current = new AbortController();
+      const { controller, requestId } = beginRequest();
 
       setState((prev) => ({
         ...prev,
-        status: 'generating',
         stickers: prev.stickers.filter((s) => s.expression !== expression),
       }));
 
@@ -176,7 +202,7 @@ export function useGenerate(description: string): UseGenerateReturn {
             ...generationOptions,
             regenerate: { expression, concept },
           }),
-          signal: abortRef.current.signal,
+          signal: controller.signal,
         });
 
         if (!response.ok || !response.body) throw new Error('Gagal connect ke server.');
@@ -188,6 +214,7 @@ export function useGenerate(description: string): UseGenerateReturn {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
+          if (!isCurrentRequest(requestId)) return;
           lineBuffer += decoder.decode(value, { stream: true });
           const lines = lineBuffer.split('\n');
           lineBuffer = lines.pop() ?? '';
@@ -198,6 +225,7 @@ export function useGenerate(description: string): UseGenerateReturn {
             try {
               const event = JSON.parse(trimmed) as StreamEvent;
               if (event.type === 'design' || event.type === 'sticker') {
+                if (!isCurrentRequest(requestId)) return;
                 const sticker: StickerPrompt = {
                   expression: event.expression,
                   title: event.title,
@@ -217,17 +245,24 @@ export function useGenerate(description: string): UseGenerateReturn {
           }
         }
 
-        setState((prev) => ({ ...prev, status: 'done' }));
+        if (isCurrentRequest(requestId)) {
+          setState((prev) => ({ ...prev, status: 'done' }));
+        }
       } catch (err) {
-        if ((err as Error).name === 'AbortError') return;
+        if ((err as Error).name === 'AbortError') {
+          return;
+        }
+        if (!isCurrentRequest(requestId)) {
+          return;
+        }
         setState((prev) => ({
           ...prev,
           status: 'error',
-          error: (err as Error).message,
+          error: (err as Error).message || 'Terjadi kesalahan. Coba lagi ya!',
         }));
       }
     },
-    [description]
+    [beginRequest, description, isCurrentRequest]
   );
 
   const reset = useCallback(() => {

@@ -188,6 +188,43 @@ function enqueueNdjson(
   }
 }
 
+function formatGroqError(err: unknown): { status: number; message: string } {
+  if (err && typeof err === 'object') {
+    const status = typeof (err as { status?: unknown }).status === 'number'
+      ? ((err as { status: number }).status)
+      : undefined;
+    const message = typeof (err as { message?: unknown }).message === 'string'
+      ? (err as { message: string }).message
+      : 'Terjadi kesalahan dari Groq.';
+
+    if (status === 401 || status === 403) {
+      return {
+        status,
+        message: `Akses Groq ditolak: ${message}`,
+      };
+    }
+
+    if (status === 429) {
+      return {
+        status,
+        message: `Groq sedang rate limit: ${message}`,
+      };
+    }
+
+    if (typeof status === 'number') {
+      return {
+        status,
+        message: `Groq error ${status}: ${message}`,
+      };
+    }
+  }
+
+  return {
+    status: 503,
+    message: 'Server sedang sibuk. Coba lagi dalam beberapa detik! ⏳',
+  };
+}
+
 // ─── Route handler ────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest): Promise<Response> {
@@ -233,7 +270,7 @@ export async function POST(request: NextRequest): Promise<Response> {
   }
 
   const groq = new Groq({ apiKey });
-  const model = process.env.GROQ_MODEL ?? 'llama-3.3-70b-versatile';
+  const model = process.env.GROQ_MODEL ?? 'llama-3.1-8b-instant';
 
   // ── Build prompt ──
   const isRegenerate = !!regenerate;
@@ -254,7 +291,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         { role: 'user', content: userMessage },
       ],
       temperature: 0.95,
-      max_tokens: isRegenerate ? 768 : 4096,
+      max_tokens: isRegenerate ? 768 : 2048,
       stream: true,
     });
 
@@ -302,10 +339,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       },
     });
   } catch (err) {
-    const message =
-      err instanceof Error && err.message.includes('API key')
-        ? 'Groq API key tidak valid. Periksa konfigurasi kamu.'
-        : 'Server sedang sibuk. Coba lagi dalam beberapa detik! ⏳';
-    return NextResponse.json({ type: 'error', message }, { status: 503 });
+    const formatted = formatGroqError(err);
+    return NextResponse.json({ type: 'error', message: formatted.message }, { status: formatted.status });
   }
 }

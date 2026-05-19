@@ -1,13 +1,26 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
-import { RANDOM_IDEAS, getRandomIdea } from '../randomIdeas';
+import { RANDOM_IDEAS, getRandomIdea, getRandomIdeaPoolStats } from '../randomIdeas';
 
 describe('randomIdeas', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('keeps at least 20 curated seed ideas', () => {
-    expect(RANDOM_IDEAS.length).toBeGreaterThanOrEqual(20);
+  it('keeps at least 100 curated seed ideas', () => {
+    expect(RANDOM_IDEAS.length).toBeGreaterThanOrEqual(100);
+  });
+
+  it('expands every random idea pool by 100 entries', () => {
+    expect(getRandomIdeaPoolStats()).toEqual({
+      randomIdeas: 130,
+      subjects: 124,
+      subjectsByForm: 153,
+      roles: 118,
+      quirks: 112,
+      styleDirections: 107,
+      styleDirectionsByForm: 109,
+      styleDirectionsByTheme: 121,
+    });
   });
 
   it('returns a usable idea string', () => {
