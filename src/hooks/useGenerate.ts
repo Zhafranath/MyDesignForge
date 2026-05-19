@@ -6,6 +6,7 @@ import type {
   ProductType,
   Expression,
   CharacterConcept,
+  ReferenceImagePayload,
   StickerPrompt,
   StreamEvent,
 } from '@/types';
@@ -24,7 +25,8 @@ interface UseGenerateReturn {
     description: string,
     platform: Platform,
     targetProduct: ProductType,
-    generationOptions: GenerationOptions
+    generationOptions: GenerationOptions,
+    referenceImage?: ReferenceImagePayload | null
   ) => Promise<void>;
   regenerateOne: (
     expression: Expression,
@@ -169,9 +171,16 @@ export function useGenerate(description: string): UseGenerateReturn {
       desc: string,
       platform: Platform,
       targetProduct: ProductType,
-      generationOptions: GenerationOptions
+      generationOptions: GenerationOptions,
+      referenceImage?: ReferenceImagePayload | null
     ) => {
-      await streamFromApi({ description: desc, platform, targetProduct, ...generationOptions });
+      await streamFromApi({
+        description: desc,
+        platform,
+        targetProduct,
+        ...generationOptions,
+        referenceImage: referenceImage ?? undefined,
+      });
     },
     [streamFromApi]
   );

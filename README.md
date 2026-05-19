@@ -10,6 +10,7 @@ The app is optimized for Redbubble-style workflows. Prompt generation is handled
 - Product modes for Sticker, Phone Case, and T-Shirt designs.
 - Prompt rules for aspect ratio, transparent backgrounds, safe margins, print readability, and product-specific composition.
 - Seller-safety guidance that avoids brands, logos, celebrities, copyrighted characters, fan art, mockups, watermarks, and QR codes.
+- Optional character reference image upload for PNG, JPG, and WEBP files up to 4 MB.
 - Character form controls: animal, human, cartoon, doodle, anime, living object, stickman, fantasy creature, robot, living food, living plant, cute monster, and original mascot.
 - Text controls: no text, automatic expression text, or exact custom text.
 - Theme controls: minimalist, simple cute, controlled accessories, kawaii pastel, bold vector, retro 90s, streetwear, goth cute, decorative pattern, and premium mascot.
@@ -71,6 +72,7 @@ Set at least this value in `.env.local`:
 ```env
 GROQ_API_KEY=gsk_your_real_key_here
 GROQ_MODEL=llama-3.1-8b-instant
+GROQ_VISION_MODEL=meta-llama/llama-4-scout-17b-16e-instruct
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
 ```
 
@@ -325,6 +327,25 @@ http://127.0.0.1:8000/health
 8. Download the PNG from the download button.
 
 Image generation controls are only shown for Sticker mode. Phone Case and T-Shirt remain prompt-only.
+
+## Character Reference Image Upload
+
+Use this when you want the generated character to follow an uploaded image instead of a manually selected character form.
+
+1. Upload a PNG, JPG, or WEBP image in the reference image field.
+2. Keep the file at 4 MB or smaller.
+3. Add optional text direction in the description field if you want a specific mood, product angle, or audience.
+4. Click Generate.
+
+When a reference image is active, the app disables the character form selector. The server sends the image to the configured Groq vision model, converts the visible character into a detailed description, then locks the generated prompt pack to that character identity.
+
+Set this value in `.env.local` to choose the vision model:
+
+```env
+GROQ_VISION_MODEL=meta-llama/llama-4-scout-17b-16e-instruct
+```
+
+Uploaded reference images are validated server-side and are not written to the repository or local image service output folder. They are sent as request data for prompt analysis.
 
 ## Text Quality Notes
 

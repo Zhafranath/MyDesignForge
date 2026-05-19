@@ -34,4 +34,23 @@ describe('CharacterInput', () => {
     expect(onChange).toHaveBeenCalledWith(expect.stringContaining('stickman'));
     expect(onChange).toHaveBeenCalledWith(expect.stringContaining('tulisan otomatis'));
   });
+
+  it('allows generation when an external reference image unlocks the input', async () => {
+    const user = userEvent.setup();
+    const onGenerate = vi.fn();
+
+    render(
+      <CharacterInput
+        value=""
+        onChange={vi.fn()}
+        onGenerate={onGenerate}
+        isGenerating={false}
+        canGenerateOverride
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /generate prompt desain/i }));
+
+    expect(onGenerate).toHaveBeenCalledOnce();
+  });
 });

@@ -135,4 +135,48 @@ describe('buildSystemPrompt generation options', () => {
     expect(prompt).toContain('Expression:');
     expect(prompt).toContain('Avoid:');
   });
+
+  it('locks generated sticker prompts to the uploaded reference image character', () => {
+    const prompt = buildSystemPrompt('stable-diffusion', 'sticker', {
+      characterForm: 'animal',
+      textMode: 'none',
+      theme: 'simple-cute',
+      referenceImageContext: {
+        description: 'A round blue cat mascot with tiny yellow scarf, sleepy eyes, and star cheek marks.',
+      },
+    });
+
+    expect(prompt).toContain('REFERENCE IMAGE CHARACTER LOCK');
+    expect(prompt).toContain('The uploaded reference image is the locked character source.');
+    expect(prompt).toContain('round blue cat mascot');
+    expect(prompt).toContain('Do not change the character form');
+    expect(prompt).not.toContain('Selected character form: animal');
+  });
+
+  it('keeps reference image identity locked during regenerate prompts', () => {
+    const prompt = buildRegeneratePrompt(
+      {
+        name: 'Blue Star Cat',
+        description: 'Reference image character: A round blue cat mascot with tiny yellow scarf.',
+        colors: ['#3b82f6', '#facc15'],
+        style: 'clean vector sticker',
+        characterType: 'cat mascot',
+      },
+      'happy',
+      'dalle',
+      'sticker',
+      {
+        characterForm: 'auto',
+        textMode: 'none',
+        theme: 'simple-cute',
+        referenceImageContext: {
+          description: 'A round blue cat mascot with tiny yellow scarf, sleepy eyes, and star cheek marks.',
+        },
+      }
+    );
+
+    expect(prompt).toContain('REFERENCE IMAGE CHARACTER LOCK');
+    expect(prompt).toContain('tiny yellow scarf');
+    expect(prompt).toContain('Do not change the character form');
+  });
 });

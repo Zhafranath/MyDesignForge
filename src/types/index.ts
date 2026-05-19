@@ -32,6 +32,16 @@ export type CharacterForm =
 
 export type TextMode = 'none' | 'auto' | 'custom';
 
+export interface ReferenceImagePayload {
+  dataUrl: string;
+  mimeType: 'image/png' | 'image/jpeg' | 'image/webp';
+  name?: string;
+}
+
+export interface ReferenceImageContext {
+  description: string;
+}
+
 export type DesignTheme =
   | 'auto'
   | 'minimalist'
@@ -50,6 +60,7 @@ export interface GenerationOptions {
   textMode: TextMode;
   theme: DesignTheme;
   customText?: string;
+  referenceImageContext?: ReferenceImageContext;
 }
 
 export type Expression =

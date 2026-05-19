@@ -8,6 +8,7 @@ import { Github } from 'lucide-react';
 import { Mascot } from '@/components/Mascot';
 import { CharacterInput } from '@/components/CharacterInput';
 import { CharacterFormSelector } from '@/components/CharacterFormSelector';
+import { ReferenceImageInput } from '@/components/ReferenceImageInput';
 import { ProductSelector } from '@/components/ProductSelector';
 import { PlatformSelector } from '@/components/PlatformSelector';
 import { TextOptionsSelector } from '@/components/TextOptionsSelector';
@@ -22,13 +23,14 @@ import { useHistory } from '@/hooks/useHistory';
 import { DEFAULT_GENERATION_OPTIONS } from '@/lib/constants';
 import { generateId } from '@/lib/storage';
 
-import type { CharacterForm, DesignTheme, GenerationOptions, Platform, ProductType, StickerPack, Expression, CharacterConcept, TextMode } from '@/types';
+import type { CharacterForm, DesignTheme, GenerationOptions, Platform, ProductType, StickerPack, Expression, CharacterConcept, TextMode, ReferenceImagePayload } from '@/types';
 
 export default function HomePage() {
   const [description, setDescription] = useState('');
   const [platform, setPlatform] = useState<Platform>('midjourney');
   const [targetProduct, setTargetProduct] = useState<ProductType>('sticker');
   const [generationOptions, setGenerationOptions] = useState<GenerationOptions>(DEFAULT_GENERATION_OPTIONS);
+  const [referenceImage, setReferenceImage] = useState<ReferenceImagePayload | null>(null);
 
   const { state, generate, regenerateOne, reset } = useGenerate(description);
   const { history, save, remove, clear } = useHistory();
@@ -36,14 +38,14 @@ export default function HomePage() {
   // ─── Generate handler ────────────────────────────────────────────────────
 
   const handleGenerate = useCallback(async () => {
-    if (!description.trim() || state.status === 'generating') return;
+    if ((!description.trim() && !referenceImage) || state.status === 'generating') return;
     if (generationOptions.textMode === 'custom' && !generationOptions.customText?.trim()) {
       toast.error('Teks custom wajib diisi.');
       return;
     }
     reset();
-    await generate(description, platform, targetProduct, generationOptions);
-  }, [description, platform, targetProduct, generationOptions, state.status, generate, reset]);
+    await generate(description, platform, targetProduct, generationOptions, referenceImage);
+  }, [description, platform, targetProduct, generationOptions, referenceImage, state.status, generate, reset]);
 
   const handleCharacterFormChange = useCallback((characterForm: CharacterForm) => {
     setGenerationOptions((prev) => ({ ...prev, characterForm }));
@@ -129,6 +131,7 @@ export default function HomePage() {
 
   const isGenerating = state.status === 'generating';
   const hasPack = state.concept !== null || state.stickers.length > 0;
+  const canGenerateFromInput = Boolean(description.trim() || referenceImage);
 
   return (
     <div className="min-h-screen">
@@ -190,14 +193,34 @@ export default function HomePage() {
             onGenerate={handleGenerate}
             isGenerating={isGenerating}
             generationOptions={generationOptions}
+            canGenerateOverride={canGenerateFromInput}
           />
 
           <div className="border-t border-kawaii-border pt-5">
-            <CharacterFormSelector
-              value={generationOptions.characterForm}
-              onChange={handleCharacterFormChange}
+            <ReferenceImageInput
+              value={referenceImage}
+              onChange={setReferenceImage}
               disabled={isGenerating}
             />
+          </div>
+
+          <div className="border-t border-kawaii-border pt-5">
+            {referenceImage ? (
+              <div className="rounded-kawaii-sm border border-secondary-200 bg-secondary-50 p-3">
+                <p className="font-display text-sm font-semibold text-kawaii-text">
+                  Bentuk karakter dari gambar referensi
+                </p>
+                <p className="mt-1 text-xs text-kawaii-muted">
+                  Selector bentuk karakter dinonaktifkan karena karakter akan dianalisis dari gambar upload.
+                </p>
+              </div>
+            ) : (
+              <CharacterFormSelector
+                value={generationOptions.characterForm}
+                onChange={handleCharacterFormChange}
+                disabled={isGenerating}
+              />
+            )}
           </div>
 
           <div className="border-t border-kawaii-border pt-5">

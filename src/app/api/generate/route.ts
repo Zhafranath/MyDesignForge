@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
-import type { CharacterForm, DesignTheme, GenerationOptions, Platform, Expression, ProductType, TextMode } from '@/types';
+import type { CharacterForm, DesignTheme, GenerationOptions, Platform, Expression, ProductType, TextMode, ReferenceImagePayload } from '@/types';
 import { buildSystemPrompt, buildRegeneratePrompt } from '@/lib/prompts';
+import { validateReferenceImagePayload } from '@/lib/referenceImage';
 import {
   CHARACTER_FORM_ORDER,
   DESIGN_THEME_ORDER,
@@ -49,6 +50,7 @@ interface GenerateBody {
   textMode: TextMode;
   theme: DesignTheme;
   customText?: string;
+  referenceImage?: ReferenceImagePayload;
   regenerate?: {
     expression: Expression;
     concept: {
@@ -68,11 +70,17 @@ function validateBody(body: unknown): { valid: true; data: GenerateBody } | { va
     return { valid: false, error: 'Request body harus berupa JSON object.' };
   }
   const b = body as Record<string, unknown>;
+  const referenceValidation = validateReferenceImagePayload(b.referenceImage);
+  if (!referenceValidation.valid) {
+    return { valid: false, error: referenceValidation.error };
+  }
 
-  if (typeof b.description !== 'string' || b.description.trim().length < 5) {
+  const hasReferenceImage = !!referenceValidation.image;
+  const rawDescription = typeof b.description === 'string' ? b.description.trim() : '';
+  if (!hasReferenceImage && rawDescription.length < 5) {
     return { valid: false, error: 'Deskripsi karakter minimal 5 karakter.' };
   }
-  if (b.description.length > 700) {
+  if (rawDescription.length > 700) {
     return { valid: false, error: 'Deskripsi karakter maksimal 700 karakter.' };
   }
   if (!VALID_PLATFORMS.has(b.platform as Platform)) {
@@ -120,12 +128,48 @@ function validateBody(body: unknown): { valid: true; data: GenerateBody } | { va
     valid: true,
     data: {
       ...(b as unknown as GenerateBody),
+      description: rawDescription,
       characterForm,
       textMode,
       theme,
       customText,
+      referenceImage: referenceValidation.image,
     },
   };
+}
+
+async function analyzeReferenceImage(
+  groq: Groq,
+  referenceImage: ReferenceImagePayload,
+  userDirection: string
+): Promise<string> {
+  const model = process.env.GROQ_VISION_MODEL ?? 'meta-llama/llama-4-scout-17b-16e-instruct';
+  const completion = await groq.chat.completions.create({
+    model,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: `Analyze this uploaded character reference for a print-on-demand prompt generator. Describe only visible character details: form/species/object type, body shape, face, expression, colors, clothing, accessories, markings, pose, silhouette, style, details to preserve, and details to simplify for clean sticker artwork. User direction: ${userDirection || 'Create a sticker-ready character prompt pack from this reference image.'}`,
+          },
+          {
+            type: 'image_url',
+            image_url: { url: referenceImage.dataUrl },
+          },
+        ],
+      },
+    ],
+    temperature: 0.2,
+    max_tokens: 500,
+  });
+
+  const description = completion.choices[0]?.message?.content?.trim();
+  if (!description) {
+    throw new Error('Gambar referensi gagal dianalisis.');
+  }
+  return description;
 }
 
 function extractCompleteJsonObjects(input: string): { objects: string[]; rest: string } {
@@ -256,9 +300,8 @@ export async function POST(request: NextRequest): Promise<Response> {
     );
   }
 
-  const { description, platform, regenerate, characterForm, textMode, theme, customText } = validation.data;
+  const { description, platform, regenerate, characterForm, textMode, theme, customText, referenceImage } = validation.data;
   const targetProduct = validation.data.targetProduct ?? 'sticker';
-  const generationOptions: GenerationOptions = { characterForm, textMode, theme, customText };
 
   // ── Init Groq client ──
   const apiKey = process.env.GROQ_API_KEY;
@@ -272,6 +315,27 @@ export async function POST(request: NextRequest): Promise<Response> {
   const groq = new Groq({ apiKey });
   const model = process.env.GROQ_MODEL ?? 'llama-3.1-8b-instant';
 
+  let referenceImageContext: GenerationOptions['referenceImageContext'];
+  if (referenceImage) {
+    try {
+      const referenceDescription = await analyzeReferenceImage(groq, referenceImage, description);
+      referenceImageContext = { description: referenceDescription };
+    } catch {
+      return NextResponse.json(
+        { type: 'error', message: 'Gambar referensi gagal dianalisis. Coba gambar yang lebih jelas.' },
+        { status: 502 }
+      );
+    }
+  }
+
+  const generationOptions: GenerationOptions = {
+    characterForm: referenceImageContext ? 'auto' : characterForm,
+    textMode,
+    theme,
+    customText,
+    referenceImageContext,
+  };
+
   // ── Build prompt ──
   const isRegenerate = !!regenerate;
   const systemPrompt = isRegenerate
@@ -280,7 +344,7 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   const userMessage = isRegenerate
     ? `Regenerate the "${regenerate!.expression}" expression sticker.`
-    : description.trim();
+    : description.trim() || 'Create a sticker-ready prompt pack from the uploaded reference image.';
 
   // ── Stream response ──
   try {

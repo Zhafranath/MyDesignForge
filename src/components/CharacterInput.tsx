@@ -14,6 +14,7 @@ interface CharacterInputProps {
   onGenerate: () => void;
   isGenerating: boolean;
   generationOptions?: GenerationOptions;
+  canGenerateOverride?: boolean;
 }
 
 export function CharacterInput({
@@ -22,11 +23,12 @@ export function CharacterInput({
   onGenerate,
   isGenerating,
   generationOptions,
+  canGenerateOverride,
 }: CharacterInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const charCount = value.length;
-  const canGenerate = charCount >= MIN_DESC_LENGTH && !isGenerating;
+  const canGenerate = (canGenerateOverride ?? charCount >= MIN_DESC_LENGTH) && !isGenerating;
   const isNearLimit = charCount > MAX_DESC_LENGTH * 0.85;
 
   const handleShuffle = useCallback(() => {

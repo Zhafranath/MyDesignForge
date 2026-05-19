@@ -115,6 +115,24 @@ function buildCharacterFormGuide(characterForm: CharacterForm): string {
 - If the user's idea conflicts with this selected form, adapt the idea into a brand-safe original ${form.label.toLowerCase()} character.`;
 }
 
+function buildCharacterIdentityGuide(options: GenerationOptions): string {
+  const referenceDescription = options.referenceImageContext?.description.trim();
+  if (referenceDescription) {
+    return `## REFERENCE IMAGE CHARACTER LOCK
+The uploaded reference image is the locked character source.
+Reference image character description:
+${referenceDescription}
+
+- Do not change the character form, species/object type, core silhouette, palette, signature accessories, markings, or personality cues from the reference image.
+- The concept characterType must be inferred from the reference image description.
+- Every design prompt must explicitly preserve the reference character identity while changing only expression, pose, role, or small scene details.
+- Use the reference as inspiration for an original, seller-safe design. If the reference resembles a copyrighted character, transform it into a safer original archetype without copying protected names, logos, or exact costume details.`;
+  }
+
+  return `## CHARACTER FORM OPTION
+${buildCharacterFormGuide(options.characterForm)}`;
+}
+
 function buildTextGuide(options: GenerationOptions): string {
   if (options.textMode === 'auto') {
     return `Text mode: automatic expression text
@@ -298,7 +316,7 @@ export function buildSystemPrompt(
   const platformGuide = PLATFORM_STYLES[platform];
   const productGuide = PRODUCT_GUIDES[targetProduct];
   const product = PRODUCTS[targetProduct];
-  const characterFormGuide = buildCharacterFormGuide(options.characterForm);
+  const characterIdentityGuide = buildCharacterIdentityGuide(options);
   const textGuide = buildTextGuide(options);
   const themeGuide = buildThemeGuide(options.theme);
   const structuredPromptGuide = buildStructuredPromptGuide(targetProduct, options);
@@ -311,8 +329,7 @@ Your task: Given a design idea in any language, create ONE original character/de
 TARGET PRODUCT: ${product.emoji} ${product.label}
 ${productGuide}
 
-## CHARACTER FORM OPTION
-${characterFormGuide}
+${characterIdentityGuide}
 
 ## TEXT OPTION
 ${textGuide}
@@ -395,7 +412,7 @@ export function buildRegeneratePrompt(
   const platformGuide = PLATFORM_STYLES[platform];
   const productGuide = PRODUCT_GUIDES[targetProduct];
   const product = PRODUCTS[targetProduct];
-  const characterFormGuide = buildCharacterFormGuide(options.characterForm);
+  const characterIdentityGuide = buildCharacterIdentityGuide(options);
   const textGuide = buildTextGuide(options);
   const themeGuide = buildThemeGuide(options.theme);
   const structuredPromptGuide = buildStructuredPromptGuide(targetProduct, options);
@@ -418,7 +435,7 @@ TARGET PRODUCT: ${product.emoji} ${product.label}
 ${productGuide}
 
 CHARACTER FORM (LOCKED — DO NOT CHANGE):
-${characterFormGuide}
+${characterIdentityGuide}
 
 TEXT OPTION (LOCKED — DO NOT CHANGE):
 ${textGuide}
